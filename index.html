@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Cronograma 7×7 – Los Pelambres</title>
+<style>
+:root{
+  --dia:#1a3a5c;--noche:#4a2060;--desc:#f0f4f8;--desc-txt:#444;
+  --feriado:#c0392b;--inicio:#27ae60;--fin:#e67e22;
+  --border:#dde3ea;--font:'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#f7f9fc;font-family:var(--font);color:#222;padding-bottom:72px}
+header{background:linear-gradient(135deg,#1a3a5c,#4a2060);color:#fff;padding:14px 16px;text-align:center}
+header h1{font-size:1.15rem;font-weight:700}
+header p{font-size:.72rem;opacity:.8;margin-top:2px}
+
+.legend{display:flex;flex-wrap:wrap;gap:7px;padding:9px 12px;background:#fff;border-bottom:1px solid var(--border);justify-content:center}
+.leg{display:flex;align-items:center;gap:4px;font-size:.68rem}
+.leg-dot{width:13px;height:13px;border-radius:3px;flex-shrink:0;border:1px solid rgba(0,0,0,.1)}
+
+.controls{padding:9px 12px;background:#fff;border-bottom:1px solid var(--border);display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.controls label{font-size:.72rem;font-weight:600;color:#555}
+.mode-btn{padding:5px 11px;border-radius:18px;border:1.5px solid var(--border);background:#fff;font-size:.7rem;cursor:pointer;font-family:var(--font);transition:all .15s}
+.mode-btn.active,.mode-btn:active{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+
+.months-wrap{padding:10px 8px 10px}
+.month-block{background:#fff;border-radius:10px;border:1px solid var(--border);margin-bottom:10px;overflow:hidden}
+.month-title{background:linear-gradient(90deg,#1a3a5c,#2d5a8e);color:#fff;padding:7px 12px;font-size:.8rem;font-weight:700}
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr)}
+.day-hdr{text-align:center;padding:5px 0;font-size:.6rem;font-weight:700;color:#888;background:#f8f9fa;border-bottom:1px solid var(--border)}
+.day-cell{min-height:48px;padding:3px 2px;border-right:1px solid #eee;border-bottom:1px solid #eee;position:relative;cursor:pointer;display:flex;flex-direction:column;align-items:center;transition:filter .12s}
+.day-cell:nth-child(7n){border-right:none}
+.day-cell:active{filter:brightness(.85)}
+.day-cell.empty{background:#fafafa;cursor:default}
+.day-cell.t-dia{background:var(--dia);color:#fff}
+.day-cell.t-noche{background:var(--noche);color:#fff}
+.day-cell.t-desc{background:var(--desc);color:var(--desc-txt)}
+.day-cell.t-feriado{background:var(--feriado);color:#fff}
+.dnum{font-size:.78rem;font-weight:700;margin-top:3px}
+.dlbl{font-size:.48rem;text-transform:uppercase;margin-top:1px;opacity:.9}
+.dtags{display:flex;gap:2px;margin-top:2px;flex-wrap:wrap;justify-content:center}
+.tag{font-size:.44rem;border-radius:2px;padding:1px 3px;font-weight:700;color:#fff}
+.ti{background:var(--inicio)}.tf{background:var(--fin)}
+.note-dot{position:absolute;top:2px;right:3px;width:5px;height:5px;background:#f1c40f;border-radius:50%}
+
+/* modal editar */
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;align-items:center;justify-content:center}
+.overlay.on{display:flex}
+.modal{background:#fff;border-radius:14px;width:92%;max-width:340px;padding:18px 16px;position:relative}
+.modal h3{font-size:.9rem;color:#1a3a5c;margin-bottom:11px}
+.mcl{position:absolute;top:10px;right:13px;background:none;border:none;font-size:1.3rem;cursor:pointer;color:#888}
+.opt-col{display:flex;flex-direction:column;gap:6px;margin-bottom:11px}
+.opt{padding:8px 11px;border-radius:8px;border:1.5px solid var(--border);background:#f7f9fc;font-size:.76rem;cursor:pointer;font-family:var(--font);display:flex;align-items:center;gap:7px;transition:all .12s}
+.opt.sel{background:#1a3a5c;color:#fff;border-color:#1a3a5c}
+.odot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.extras{border-top:1px solid var(--border);padding-top:9px}
+.togrow{display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;font-size:.76rem}
+.tog{width:36px;height:20px;background:#ccc;border-radius:10px;position:relative;cursor:pointer;border:none;transition:background .2s;flex-shrink:0}
+.tog::after{content:'';position:absolute;top:3px;left:3px;width:14px;height:14px;background:#fff;border-radius:50%;transition:left .18s}
+.tog.on{background:var(--inicio)}.tog.on2{background:var(--fin)}.tog.onr{background:var(--feriado)}
+.tog.on::after,.tog.on2::after,.tog.onr::after{left:19px}
+.ntxt{width:100%;padding:6px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:.74rem;font-family:var(--font);resize:none;margin-top:3px}
+.ntxt:focus{outline:none;border-color:#1a3a5c}
+.msave{width:100%;padding:9px;background:#1a3a5c;color:#fff;border:none;border-radius:8px;font-size:.8rem;font-weight:700;cursor:pointer;margin-top:9px;font-family:var(--font)}
+
+/* modal gcal */
+.gcal-box{background:#fff;border-radius:14px;width:92%;max-width:360px;padding:18px 16px;position:relative;max-height:88vh;overflow-y:auto}
+.gcal-box h3{font-size:.9rem;color:#1a3a5c;margin-bottom:4px}
+.gcal-box p{font-size:.7rem;color:#666;margin-bottom:10px}
+.glist{display:flex;flex-direction:column;gap:5px;max-height:52vh;overflow-y:auto;margin-bottom:10px}
+.gitem{display:flex;align-items:center;gap:7px;padding:7px 9px;border-radius:7px;border:1px solid var(--border);font-size:.72rem}
+.gitem input{width:15px;height:15px;accent-color:#1a3a5c;flex-shrink:0;cursor:pointer}
+.gdot{width:9px;height:9px;border-radius:2px;flex-shrink:0}
+.gbrow{display:flex;gap:7px;margin-top:4px}
+.gbtn{flex:1;padding:8px;border:none;border-radius:7px;font-size:.74rem;font-weight:700;cursor:pointer;font-family:var(--font)}
+.gbtn-sel{background:#f0f4f8;color:#333;border:1.5px solid var(--border)}
+.gbtn-go{background:#4285f4;color:#fff}
+
+/* barra inferior */
+.bar{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--border);padding:7px 8px;display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:5px;z-index:50}
+.bbtn{padding:8px 4px;border-radius:8px;border:none;font-size:.67rem;font-weight:700;cursor:pointer;font-family:var(--font);display:flex;flex-direction:column;align-items:center;gap:2px;line-height:1.2}
+.bbtn span{font-size:.9rem}
+.b-pdf{background:#c0392b;color:#fff}
+.b-cal{background:#4285f4;color:#fff}
+.b-wa{background:#25d366;color:#fff}
+.b-rst{background:#f0f4f8;color:#555;border:1px solid var(--border)}
+
+/* spinner */
+.spin-wrap{display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:200;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+.spin-wrap.on{display:flex}
+.spin{width:44px;height:44px;border:4px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .8s linear infinite}
+.stxt{color:#fff;font-size:.82rem;font-weight:600}
+@keyframes sp{to{transform:rotate(360deg)}}
+
+@media print{
+  .bar,.controls{display:none!important}
+  .overlay{display:none!important}
+  body{padding:0;background:#fff}
+  .months-wrap{padding:4px;display:grid;grid-template-columns:1fr 1fr;gap:7px}
+  .month-block{break-inside:avoid}
+  @page{size:A4 landscape;margin:7mm}
+}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>📅 Cronograma 7×7 Rotativo</h1>
+  <p>26 Jun 2026 – 28 Feb 2027 · Minera Los Pelambres</p>
+</header>
+
+<div class="legend">
+  <div class="leg"><div class="leg-dot" style="background:#1a3a5c"></div>Turno Día</div>
+  <div class="leg"><div class="leg-dot" style="background:#4a2060"></div>Turno Noche</div>
+  <div class="leg"><div class="leg-dot" style="background:#e8ecf0"></div>Descanso</div>
+  <div class="leg"><div class="leg-dot" style="background:#c0392b"></div>Feriado</div>
+  <div class="leg"><div class="leg-dot" style="background:#27ae60"></div>↑ Subida</div>
+  <div class="leg"><div class="leg-dot" style="background:#e67e22"></div>↓ Bajada</div>
+</div>
+
+<div class="controls">
+  <label>Editar:</label>
+  <button class="mode-btn active" id="bm-turno"   onclick="setMode('turno')">Turno</button>
+  <button class="mode-btn"        id="bm-feriado" onclick="setMode('feriado')">🔴 Feriado</button>
+  <button class="mode-btn"        id="bm-inicio"  onclick="setMode('inicio')">↑ Subida</button>
+  <button class="mode-btn"        id="bm-fin"     onclick="setMode('fin')">↓ Bajada</button>
+  <button class="mode-btn"        id="bm-nota"    onclick="setMode('nota')">📝 Nota</button>
+</div>
+
+<div class="months-wrap" id="mwrap"></div>
+
+<!-- Modal: editar día -->
+<div class="overlay" id="ov-edit">
+  <div class="modal">
+    <button class="mcl" onclick="closeEdit()">✕</button>
+    <h3 id="edit-title">Editar día</h3>
+    <div class="opt-col" id="edit-opts"></div>
+    <div class="extras">
+      <div class="togrow"><span>🟢 Inicio turno (subida)</span><button class="tog" id="t-ini" onclick="toggl('ini')"></button></div>
+      <div class="togrow"><span>🟠 Fin de turno (bajada)</span><button class="tog" id="t-fin" onclick="toggl('fin')"></button></div>
+      <div class="togrow"><span>🔴 Feriado</span><button class="tog" id="t-fer" onclick="toggl('fer')"></button></div>
+      <label style="font-size:.74rem;font-weight:600;display:block;margin-top:7px">Nota:</label>
+      <textarea class="ntxt" id="edit-nota" rows="2" placeholder="Ej: Feriado 18 sep..."></textarea>
+    </div>
+    <button class="msave" onclick="saveEdit()">Guardar</button>
+  </div>
+</div>
+
+<!-- Modal: Google Calendar -->
+<div class="overlay" id="ov-gcal">
+  <div class="gcal-box">
+    <button class="mcl" onclick="closeGcal()">✕</button>
+    <h3>📅 Agregar a Google Calendar</h3>
+    <p>Selecciona bloques y se abrirá cada uno en Google Calendar para que confirmes.</p>
+    <div class="glist" id="glist"></div>
+    <div class="gbrow">
+      <button class="gbtn gbtn-sel" onclick="selAllGcal()">✔ Todos</button>
+      <button class="gbtn gbtn-go"  onclick="goGcal()">Abrir en Calendar →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Spinner -->
+<div class="spin-wrap" id="spinner"><div class="spin"></div><div class="stxt">Generando PDF…</div></div>
+
+<div class="bar">
+  <button class="bbtn b-pdf" onclick="doPDF()"><span>📄</span>Descargar PDF</button>
+  <button class="bbtn b-cal" onclick="openGcal()"><span>📅</span>Calendar</button>
+  <button class="bbtn b-wa"  onclick="doWA()"><span>📲</span>WhatsApp</button>
+  <button class="bbtn b-rst" onclick="doReset()"><span>↺</span>Resetear</button>
+</div>
+
+<script>
+// ───────────────────────── DATOS DEL CRONOGRAMA ──────────────────────────────
+const SCH = {
+  '2026-06-26':'dia','2026-06-27':'dia','2026-06-28':'dia','2026-06-29':'dia','2026-06-30':'dia',
+  '2026-07-01':'dia','2026-07-02':'dia',
+  '2026-07-03':'desc','2026-07-04':'desc','2026-07-05':'desc','2026-07-06':'desc','2026-07-07':'desc','2026-07-08':'desc','2026-07-09':'desc',
+  '2026-07-10':'noche','2026-07-11':'noche','2026-07-12':'noche','2026-07-13':'noche','2026-07-14':'noche','2026-07-15':'noche','2026-07-16':'noche',
+  '2026-07-17':'desc','2026-07-18':'desc','2026-07-19':'desc','2026-07-20':'desc','2026-07-21':'desc','2026-07-22':'desc','2026-07-23':'desc',
+  '2026-07-24':'dia','2026-07-25':'dia','2026-07-26':'dia','2026-07-27':'dia','2026-07-28':'dia','2026-07-29':'dia','2026-07-30':'dia',
+  '2026-07-31':'desc',
+  '2026-08-01':'desc','2026-08-02':'desc','2026-08-03':'desc','2026-08-04':'desc','2026-08-05':'desc','2026-08-06':'desc',
+  '2026-08-07':'noche','2026-08-08':'noche','2026-08-09':'noche','2026-08-10':'noche','2026-08-11':'noche','2026-08-12':'noche','2026-08-13':'noche',
+  '2026-08-14':'desc','2026-08-15':'desc','2026-08-16':'desc','2026-08-17':'desc','2026-08-18':'desc','2026-08-19':'desc','2026-08-20':'desc',
+  '2026-08-21':'dia','2026-08-22':'dia','2026-08-23':'dia','2026-08-24':'dia','2026-08-25':'dia','2026-08-26':'dia','2026-08-27':'dia',
+  '2026-08-28':'desc','2026-08-29':'desc','2026-08-30':'desc','2026-08-31':'desc',
+  '2026-09-01':'desc','2026-09-02':'desc','2026-09-03':'desc',
+  '2026-09-04':'noche','2026-09-05':'noche','2026-09-06':'noche','2026-09-07':'noche','2026-09-08':'noche','2026-09-09':'noche','2026-09-10':'noche',
+  '2026-09-11':'desc','2026-09-12':'desc','2026-09-13':'desc','2026-09-14':'desc','2026-09-15':'desc','2026-09-16':'desc','2026-09-17':'desc',
+  '2026-09-18':'dia','2026-09-19':'dia','2026-09-20':'dia','2026-09-21':'dia','2026-09-22':'dia','2026-09-23':'dia','2026-09-24':'dia',
+  '2026-09-25':'desc','2026-09-26':'desc','2026-09-27':'desc','2026-09-28':'desc','2026-09-29':'desc','2026-09-30':'desc',
+  '2026-10-01':'desc',
+  '2026-10-02':'noche','2026-10-03':'noche','2026-10-04':'noche','2026-10-05':'noche','2026-10-06':'noche','2026-10-07':'noche','2026-10-08':'noche',
+  '2026-10-09':'desc','2026-10-10':'desc','2026-10-11':'desc','2026-10-12':'desc','2026-10-13':'desc','2026-10-14':'desc','2026-10-15':'desc',
+  '2026-10-16':'dia','2026-10-17':'dia','2026-10-18':'dia','2026-10-19':'dia','2026-10-20':'dia','2026-10-21':'dia','2026-10-22':'dia',
+  '2026-10-23':'desc','2026-10-24':'desc','2026-10-25':'desc','2026-10-26':'desc','2026-10-27':'desc','2026-10-28':'desc','2026-10-29':'desc',
+  '2026-10-30':'noche','2026-10-31':'noche',
+  '2026-11-01':'noche','2026-11-02':'noche','2026-11-03':'noche','2026-11-04':'noche','2026-11-05':'noche',
+  '2026-11-06':'desc','2026-11-07':'desc','2026-11-08':'desc','2026-11-09':'desc','2026-11-10':'desc','2026-11-11':'desc','2026-11-12':'desc',
+  '2026-11-13':'dia','2026-11-14':'dia','2026-11-15':'dia','2026-11-16':'dia','2026-11-17':'dia','2026-11-18':'dia','2026-11-19':'dia',
+  '2026-11-20':'desc','2026-11-21':'desc','2026-11-22':'desc','2026-11-23':'desc','2026-11-24':'desc','2026-11-25':'desc','2026-11-26':'desc',
+  '2026-11-27':'noche','2026-11-28':'noche','2026-11-29':'noche','2026-11-30':'noche',
+  '2026-12-01':'noche','2026-12-02':'noche','2026-12-03':'noche',
+  '2026-12-04':'desc','2026-12-05':'desc','2026-12-06':'desc','2026-12-07':'desc','2026-12-08':'desc','2026-12-09':'desc','2026-12-10':'desc',
+  '2026-12-11':'dia','2026-12-12':'dia','2026-12-13':'dia','2026-12-14':'dia','2026-12-15':'dia','2026-12-16':'dia','2026-12-17':'dia',
+  '2026-12-18':'desc','2026-12-19':'desc','2026-12-20':'desc','2026-12-21':'desc','2026-12-22':'desc','2026-12-23':'desc','2026-12-24':'desc',
+  '2026-12-25':'noche','2026-12-26':'noche','2026-12-27':'noche','2026-12-28':'noche','2026-12-29':'noche','2026-12-30':'noche','2026-12-31':'noche',
+  '2027-01-01':'desc','2027-01-02':'desc','2027-01-03':'desc','2027-01-04':'desc','2027-01-05':'desc','2027-01-06':'desc','2027-01-07':'desc',
+  '2027-01-08':'dia','2027-01-09':'dia','2027-01-10':'dia','2027-01-11':'dia','2027-01-12':'dia','2027-01-13':'dia','2027-01-14':'dia',
+  '2027-01-15':'desc','2027-01-16':'desc','2027-01-17':'desc','2027-01-18':'desc','2027-01-19':'desc','2027-01-20':'desc','2027-01-21':'desc',
+  '2027-01-22':'noche','2027-01-23':'noche','2027-01-24':'noche','2027-01-25':'noche','2027-01-26':'noche','2027-01-27':'noche','2027-01-28':'noche',
+  '2027-01-29':'desc','2027-01-30':'desc','2027-01-31':'desc',
+  '2027-02-01':'desc','2027-02-02':'desc','2027-02-03':'desc','2027-02-04':'desc',
+  '2027-02-05':'dia','2027-02-06':'dia','2027-02-07':'dia','2027-02-08':'dia','2027-02-09':'dia','2027-02-10':'dia','2027-02-11':'dia',
+  '2027-02-12':'desc','2027-02-13':'desc','2027-02-14':'desc','2027-02-15':'desc','2027-02-16':'desc','2027-02-17':'desc','2027-02-18':'desc',
+  '2027-02-19':'noche','2027-02-20':'noche','2027-02-21':'noche','2027-02-22':'noche','2027-02-23':'noche','2027-02-24':'noche','2027-02-25':'noche',
+  '2027-02-26':'desc','2027-02-27':'desc','2027-02-28':'desc',
+};
+
+const MONTHS=[
+  {y:2026,m:6,n:'JUNIO 2026'},{y:2026,m:7,n:'JULIO 2026'},{y:2026,m:8,n:'AGOSTO 2026'},
+  {y:2026,m:9,n:'SEPTIEMBRE 2026'},{y:2026,m:10,n:'OCTUBRE 2026'},{y:2026,m:11,n:'NOVIEMBRE 2026'},
+  {y:2026,m:12,n:'DICIEMBRE 2026'},{y:2027,m:1,n:'ENERO 2027'},{y:2027,m:2,n:'FEBRERO 2027'},
+];
+const MN=['','Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+const DW=['LU','MA','MI','JU','VI','SA','DO'];
+
+// ─────────────────────────── STATE ───────────────────────────────────────────
+let OV = {};
+try{ OV=JSON.parse(localStorage.getItem('cx7')||'{}') }catch(e){ OV={} }
+function sv(){ try{localStorage.setItem('cx7',JSON.stringify(OV))}catch(e){} }
+function dk(y,m,d){ return `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}` }
+function dim(y,m){ return new Date(y,m,0).getDate() }
+function fw(y,m){ let d=new Date(y,m-1,1).getDay(); return d===0?6:d-1 }
+function lbl(t){ return {dia:'DÍA',noche:'NOCHE',desc:'DESC'}[t]||'' }
+function tFor(k){ return (OV[k]&&OV[k].turno)||SCH[k]||'desc' }
+
+let mode='turno', editKey=null;
+
+// ─────────────────────────── RENDER ──────────────────────────────────────────
+function render(){
+  const w=document.getElementById('mwrap'); w.innerHTML='';
+  MONTHS.forEach(mo=>w.appendChild(buildMonth(mo)));
+}
+
+function buildMonth({y,m,n}){
+  const bl=document.createElement('div'); bl.className='month-block';
+  bl.innerHTML=`<div class="month-title">${n}</div>`;
+  const g=document.createElement('div'); g.className='cal-grid';
+  DW.forEach(d=>{ const h=document.createElement('div'); h.className='day-hdr'; h.textContent=d; g.appendChild(h) });
+  for(let i=0;i<fw(y,m);i++){ const e=document.createElement('div'); e.className='day-cell empty'; g.appendChild(e) }
+  for(let d=1;d<=dim(y,m);d++){
+    const k=dk(y,m,d), ov=OV[k]||{}, t=tFor(k);
+    const c=document.createElement('div');
+    c.className='day-cell '+(ov.feriado?'t-feriado':'t-'+t);
+    c.innerHTML=`<span class="dnum">${d}</span><span class="dlbl">${ov.feriado?'FERIADO':lbl(t)}</span>`;
+    if(ov.inicio||ov.fin){
+      const tg=document.createElement('div'); tg.className='dtags';
+      if(ov.inicio){ const s=document.createElement('span'); s.className='tag ti'; s.textContent='↑SUB'; tg.appendChild(s) }
+      if(ov.fin){    const s=document.createElement('span'); s.className='tag tf'; s.textContent='↓BAJ'; tg.appendChild(s) }
+      c.appendChild(tg);
+    }
+    if(ov.nota){ const nb=document.createElement('div'); nb.className='note-dot'; c.appendChild(nb) }
+    c.addEventListener('click',()=>onCell(k,d,m,y));
+    g.appendChild(c);
+  }
+  bl.appendChild(g); return bl;
+}
+
+// ─────────────────────────── INTERACCIÓN ─────────────────────────────────────
+function setMode(m2){
+  mode=m2;
+  document.querySelectorAll('.mode-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('bm-'+m2).classList.add('active');
+}
+
+function onCell(k,d,m,y){
+  if(mode==='turno'||mode==='nota'){ openEdit(k,d,m,y); return }
+  if(!OV[k]) OV[k]={};
+  if(mode==='feriado') OV[k].feriado=!OV[k].feriado;
+  if(mode==='inicio')  OV[k].inicio =!OV[k].inicio;
+  if(mode==='fin')     OV[k].fin    =!OV[k].fin;
+  sv(); render();
+}
+
+// ─────────────────────────── MODAL EDITAR ────────────────────────────────────
+function openEdit(k,d,m,y){
+  editKey=k; const ov=OV[k]||{}, t=tFor(k);
+  document.getElementById('edit-title').textContent=`${d} de ${MN[m]} ${y}`;
+  const ol=document.getElementById('edit-opts'); ol.innerHTML='';
+  [{v:'dia',l:'Turno Día',c:'#1a3a5c'},{v:'noche',l:'Turno Noche',c:'#4a2060'},{v:'desc',l:'Descanso',c:'#c8d6e0'}].forEach(o=>{
+    const b=document.createElement('button');
+    b.className='opt'+(t===o.v?' sel':''); b.dataset.v=o.v;
+    b.innerHTML=`<div class="odot" style="background:${o.c}"></div>${o.l}`;
+    b.onclick=()=>{ ol.querySelectorAll('.opt').forEach(x=>x.classList.remove('sel')); b.classList.add('sel') };
+    ol.appendChild(b);
+  });
+  const ti=document.getElementById('t-ini'), tf=document.getElementById('t-fin'), tr=document.getElementById('t-fer');
+  ti.className='tog'+(ov.inicio?' on':'');
+  tf.className='tog'+(ov.fin?' on2':'');
+  tr.className='tog'+(ov.feriado?' onr':'');
+  document.getElementById('edit-nota').value=ov.nota||'';
+  document.getElementById('ov-edit').classList.add('on');
+}
+function closeEdit(){ document.getElementById('ov-edit').classList.remove('on'); editKey=null }
+function toggl(w){
+  const el=document.getElementById('t-'+w);
+  const cls=w==='ini'?'on':w==='fin'?'on2':'onr';
+  el.classList.toggle(cls);
+}
+function saveEdit(){
+  if(!editKey) return;
+  if(!OV[editKey]) OV[editKey]={};
+  const sel=document.querySelector('#edit-opts .opt.sel');
+  if(sel) OV[editKey].turno=sel.dataset.v;
+  OV[editKey].inicio =document.getElementById('t-ini').classList.contains('on');
+  OV[editKey].fin    =document.getElementById('t-fin').classList.contains('on2');
+  OV[editKey].feriado=document.getElementById('t-fer').classList.contains('onr');
+  OV[editKey].nota   =document.getElementById('edit-nota').value.trim();
+  sv(); closeEdit(); render();
+}
+
+// ─────────────────────────── PDF con Canvas ───────────────────────────────────
+function doPDF(){
+  document.getElementById('spinner').classList.add('on');
+  setTimeout(()=>{ try{ buildPDF() } catch(e){ alert('Error PDF: '+e.message) } finally{ document.getElementById('spinner').classList.remove('on') } },80);
+}
+
+function buildPDF(){
+  // Tamaño A4 landscape en px a 96dpi → 1123×794
+  const PW=1123, PH=794, MAR=28, COLS=2, ROWS=5;
+  // 2 páginas: pag1 = meses 0-3, pag2 = meses 4-8
+  const pages=[ MONTHS.slice(0,4), MONTHS.slice(4) ];
+
+  // Paleta RGB
+  const P={
+    dia:[26,58,92], noche:[74,32,96], desc:[240,244,248],
+    fer:[192,57,43], ini:[39,174,96], fin:[230,126,18],
+    w:[255,255,255], dark:[40,40,40], bdr:[200,200,200],
+    hdr:[26,58,92], sub:[45,90,142], dh:[235,239,243], gr:[110,110,110]
+  };
+
+  // Crear canvas temporal y convertir a imagen data URL, luego combinar
+  function rgb(r,g,b){ return `rgb(${r},${g},${b})` }
+
+  function drawPage(months){
+    const cv=document.createElement('canvas'); cv.width=PW; cv.height=PH;
+    const c=cv.getContext('2d');
+    c.fillStyle=rgb(...[245,247,250]); c.fillRect(0,0,PW,PH);
+
+    // Header
+    const grad=c.createLinearGradient(0,0,PW,0);
+    grad.addColorStop(0,rgb(...P.hdr)); grad.addColorStop(1,'#2d5a8e');
+    c.fillStyle=grad; c.fillRect(0,0,PW,48);
+    c.fillStyle='#fff'; c.font='bold 18px Arial,sans-serif';
+    c.fillText('CRONOGRAMA DE TRABAJO 7×7 ROTATIVO',MAR,22);
+    c.font='12px Arial,sans-serif';
+    c.fillText('26 Jun 2026 – 28 Feb 2027  |  Minera Los Pelambres  |  Sistema Acoplado Día / Noche',MAR,38);
+
+    // Leyenda
+    const LEG=[
+      {c:P.dia,l:'Turno Día'},{c:P.noche,l:'Turno Noche'},{c:P.desc,l:'Descanso'},
+      {c:P.fer,l:'Feriado'},{c:P.ini,l:'↑ Subida'},{c:P.fin,l:'↓ Bajada'}
+    ];
+    let lx=MAR;
+    LEG.forEach(it=>{
+      c.fillStyle=rgb(...it.c); c.strokeStyle=rgb(...P.bdr); c.lineWidth=0.5;
+      c.fillRect(lx,52,12,12); c.strokeRect(lx,52,12,12);
+      c.fillStyle=rgb(...P.dark); c.font='10px Arial,sans-serif';
+      c.fillText(it.l,lx+15,63); lx+=it.l.length*6.8+22;
+    });
+
+    // Grid de meses
+    const topY=72, usW=PW-2*MAR, usH=PH-topY-MAR;
+    const nCols=months.length<=4?2:3;
+    const nRows=Math.ceil(months.length/nCols);
+    const gapC=8, gapR=8;
+    const mW=(usW-(nCols-1)*gapC)/nCols;
+    const mH=(usH-(nRows-1)*gapR)/nRows;
+
+    months.forEach(({y,m,n},idx)=>{
+      const col=idx%nCols, row=Math.floor(idx/nCols);
+      const mx=MAR+col*(mW+gapC), my=topY+row*(mH+gapR);
+      drawMonth(c,mx,my,mW,mH,y,m,n,P,rgb);
+    });
+
+    return cv;
+  }
+
+  function drawMonth(c,mx,my,mW,mH,y,m,name,P,rgb){
+    const HDR=18, DHDR=14;
+    // Título mes
+    const mg=c.createLinearGradient(mx,0,mx+mW,0);
+    mg.addColorStop(0,rgb(...P.sub)); mg.addColorStop(1,'#3a6fa5');
+    c.fillStyle=mg; c.fillRect(mx,my,mW,HDR);
+    c.fillStyle='#fff'; c.font='bold 9px Arial,sans-serif';
+    c.fillText(name,mx+5,my+12);
+
+    // Headers días
+    c.fillStyle=rgb(...P.dh); c.fillRect(mx,my+HDR,mW,DHDR);
+    const colW=mW/7;
+    DW.forEach((d,i)=>{
+      c.fillStyle=rgb(...P.gr); c.font='bold 7.5px Arial,sans-serif';
+      c.textAlign='center';
+      c.fillText(d,mx+i*colW+colW/2,my+HDR+10);
+    });
+    c.textAlign='left';
+
+    // Línea separador
+    c.strokeStyle=rgb(...P.bdr); c.lineWidth=0.4;
+    c.beginPath(); c.moveTo(mx,my+HDR+DHDR); c.lineTo(mx+mW,my+HDR+DHDR); c.stroke();
+
+    // Celdas
+    const first=fw(y,m), days=dim(y,m);
+    const slots=first+days, rows=Math.ceil(slots/7);
+    const cellH=(mH-HDR-DHDR)/rows;
+
+    let day=1;
+    for(let r=0;r<rows;r++){
+      for(let col=0;col<7;col++){
+        const s=r*7+col, cx=mx+col*colW, cy=my+HDR+DHDR+r*cellH;
+        c.strokeStyle=rgb(...P.bdr); c.lineWidth=0.3;
+        if(s<first||day>days){
+          c.fillStyle='#fafafa'; c.fillRect(cx,cy,colW,cellH);
+          c.strokeRect(cx,cy,colW,cellH); continue;
+        }
+        const k=dk(y,m,day), ov=OV[k]||{}, t=tFor(k);
+        const bg=ov.feriado?P.fer:{dia:P.dia,noche:P.noche,desc:P.desc}[t]||P.desc;
+        const fg=(t==='desc'&&!ov.feriado)?P.dark:P.w;
+        c.fillStyle=rgb(...bg); c.fillRect(cx,cy,colW,cellH);
+        c.strokeRect(cx,cy,colW,cellH);
+        // Número
+        c.fillStyle=rgb(...fg); c.font=`bold 8.5px Arial,sans-serif`;
+        c.textAlign='center';
+        c.fillText(String(day),cx+colW/2,cy+cellH*0.44);
+        // Etiqueta
+        const lab=ov.feriado?'FER':lbl(t);
+        c.font='5.5px Arial,sans-serif';
+        c.fillText(lab,cx+colW/2,cy+cellH*0.78);
+        // Marcas subida/bajada
+        if(ov.inicio){ c.fillStyle=rgb(...P.ini); c.beginPath(); c.arc(cx+4,cy+cellH-3,2.5,0,Math.PI*2); c.fill() }
+        if(ov.fin){    c.fillStyle=rgb(...P.fin); c.beginPath(); c.arc(cx+colW-4,cy+cellH-3,2.5,0,Math.PI*2); c.fill() }
+        c.textAlign='left';
+        day++;
+      }
+    }
+    // Borde exterior
+    c.strokeStyle=rgb(...P.bdr); c.lineWidth=0.8;
+    c.strokeRect(mx,my,mW,mH);
+  }
+
+  // Dibujar las 2 páginas
+  const cv1=drawPage(MONTHS.slice(0,4));
+  const cv2=drawPage(MONTHS.slice(4));
+
+  // Combinar ambas páginas en un canvas vertical y descargar como PNG de alta res
+  // (el usuario puede imprimirlo como PDF desde el visor de imágenes con Ctrl+P)
+  // Mejor: generar HTML descargable con las dos páginas listas para imprimir como PDF
+  const d1=cv1.toDataURL('image/png');
+  const d2=cv2.toDataURL('image/png');
+
+  // Crear HTML auto-imprimible y descargarlo directamente
+  const html=`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Cronograma 7x7 Pelambres</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{background:#fff}
+.pg{width:297mm;height:210mm;overflow:hidden;display:block}
+.pg+.pg{page-break-before:always}
+img{width:297mm;height:210mm;display:block}
+@page{size:A4 landscape;margin:0}
+</style></head><body>
+<div class="pg"><img src="${d1}"></div>
+<div class="pg"><img src="${d2}"></div>
+<script>
+window.onload=function(){
+  setTimeout(function(){
+    window.print();
+  },400);
+};
+<\/script>
+</body></html>`;
+
+  // Descarga directa del HTML — funciona sin popup blocker
+  const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='Cronograma_7x7_Pelambres.html';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(()=>URL.revokeObjectURL(url),5000);
+}
+
+// ─────────────────────────── GOOGLE CALENDAR ──────────────────────────────────
+function buildBlocks(){
+  // Agrupa días consecutivos del mismo turno en bloques
+  const blocks=[];
+  let cur=null;
+  Object.keys(SCH).sort().forEach(k=>{
+    const t=tFor(k);
+    if(t==='desc'){ if(cur){blocks.push(cur);cur=null} return }
+    if(!cur||cur.t!==t){ if(cur)blocks.push(cur); cur={t,s:k,e:k} }
+    else cur.e=k;
+  });
+  if(cur) blocks.push(cur);
+  // Añadir marcas especiales
+  Object.keys(OV).sort().forEach(k=>{
+    const ov=OV[k];
+    if(ov.inicio) blocks.push({t:'inicio',s:k,e:k});
+    if(ov.fin)    blocks.push({t:'fin',s:k,e:k});
+    if(ov.feriado) blocks.push({t:'feriado',s:k,e:k});
+  });
+  return blocks;
+}
+
+function gcalURL(b){
+  // Google Calendar necesita fechas en formato yyyymmdd (todo-el-día)
+  function fmt(dateStr){
+    return dateStr.replace(/-/g,'');
+  }
+  // La fecha de fin en GCal es EXCLUSIVA, así que sumamos 1 día
+  function nextDay(dateStr){
+    const d=new Date(dateStr+'T12:00:00');
+    d.setDate(d.getDate()+1);
+    const y=d.getFullYear();
+    const m=String(d.getMonth()+1).padStart(2,'0');
+    const dd=String(d.getDate()).padStart(2,'0');
+    return `${y}${m}${dd}`;
+  }
+  const titles={
+    dia:'Turno Dia - Los Pelambres',
+    noche:'Turno Noche - Los Pelambres',
+    inicio:'Subida - Los Pelambres',
+    fin:'Bajada - Los Pelambres',
+    feriado:'Feriado - Los Pelambres'
+  };
+  const s=fmt(b.s);
+  const e=nextDay(b.e);
+  const title=encodeURIComponent(titles[b.t]||b.t);
+  const details=encodeURIComponent('Cronograma 7x7 Rotativo - Minera Los Pelambres, Salamanca, Coquimbo');
+  const loc=encodeURIComponent('Minera Los Pelambres, Salamanca, Chile');
+  // URL estándar que funciona sin login previo requerido
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${s}/${e}&details=${details}&location=${loc}&sf=true&output=xml`;
+}
+
+let gcalBlocks=[];
+function openGcal(){
+  gcalBlocks=buildBlocks();
+  const list=document.getElementById('glist'); list.innerHTML='';
+  const cols={dia:'#1a3a5c',noche:'#4a2060',inicio:'#27ae60',fin:'#e67e22',feriado:'#c0392b'};
+  const etiq={dia:'Turno Día',noche:'Turno Noche',inicio:'↑ Subida',fin:'↓ Bajada',feriado:'Feriado'};
+  gcalBlocks.forEach((b,i)=>{
+    const rng=b.s===b.e?b.s:`${b.s} → ${b.e}`;
+    const div=document.createElement('div'); div.className='gitem';
+    div.innerHTML=`<input type="checkbox" checked data-i="${i}"><div class="gdot" style="background:${cols[b.t]||'#888'}"></div><div><strong>${etiq[b.t]||b.t}</strong><br><small style="color:#666">${rng}</small></div>`;
+    list.appendChild(div);
+  });
+  document.getElementById('ov-gcal').classList.add('on');
+}
+function closeGcal(){ document.getElementById('ov-gcal').classList.remove('on') }
+function selAllGcal(){
+  const all=document.querySelectorAll('#glist input');
+  const chk=[...all].every(c=>c.checked);
+  all.forEach(c=>c.checked=!chk);
+}
+function goGcal(){
+  const sels=[...document.querySelectorAll('#glist input')].filter(c=>c.checked).map(c=>gcalBlocks[+c.dataset.i]);
+  if(!sels.length){ alert('Selecciona al menos un evento.'); return }
+  closeGcal();
+  // Abrir el primero de inmediato, los demás con delay para evitar bloqueo
+  sels.forEach((b,i)=>{
+    setTimeout(()=>{
+      const a=document.createElement('a');
+      a.href=gcalURL(b);
+      a.target='_blank';
+      a.rel='noopener noreferrer';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    }, i*700);
+  });
+}
+
+// ─────────────────────────── WHATSAPP ────────────────────────────────────────
+function doWA(){
+  let msg='📅 *Cronograma 7x7 - Los Pelambres*\n_26 Jun 2026 – 28 Feb 2027_\n\n';
+  MONTHS.forEach(({y,m,n})=>{
+    const lines=[];
+    for(let d=1;d<=dim(y,m);d++){
+      const k=dk(y,m,d), ov=OV[k]||{}, t=tFor(k);
+      if(t==='desc'&&!ov.inicio&&!ov.fin&&!ov.feriado&&!ov.nota) continue;
+      const em=ov.feriado?'🔴':t==='dia'?'☀️':t==='noche'?'🌙':'⬜';
+      let line=`${em} ${d}: ${ov.feriado?'FERIADO':lbl(t)}`;
+      if(ov.inicio) line+=' ↑Subida'; if(ov.fin) line+=' ↓Bajada';
+      if(ov.nota)   line+=` (${ov.nota})`;
+      lines.push(line);
+    }
+    if(lines.length) msg+=`*${n}*\n${lines.join('\n')}\n\n`;
+  });
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+
+// ─────────────────────────── RESET ───────────────────────────────────────────
+function doReset(){
+  if(!confirm('¿Borrar todos los cambios personalizados?')) return;
+  OV={}; sv(); render();
+}
+
+// ─────────────────────────── INIT ────────────────────────────────────────────
+render();
+document.getElementById('ov-edit').addEventListener('click',function(e){if(e.target===this)closeEdit()});
+document.getElementById('ov-gcal').addEventListener('click',function(e){if(e.target===this)closeGcal()});
+</script>
+</body>
+</html>
