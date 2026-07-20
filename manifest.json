@@ -1,0 +1,26 @@
+{
+  "name": "Cronograma 7x7 Los Pelambres",
+  "short_name": "Cronograma 7x7",
+  "description": "Calendario de turnos 7x7 rotativo Minera Los Pelambres",
+  "start_url": "/cronograma-pelambres/",
+  "scope": "/cronograma-pelambres/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#1a3a5c",
+  "theme_color": "#1a3a5c",
+  "lang": "es",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

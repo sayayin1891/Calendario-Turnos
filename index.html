@@ -3,7 +3,68 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<!-- PWA Meta Tags -->
+<meta name="application-name" content="Cronograma 7x7">
+<meta name="description" content="Cronograma de turnos 7x7 Minera Los Pelambres">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cronograma 7x7">
+<link rel="manifest" href="manifest.json">
+
+<script>
+// Inline manifest para cuando se usa como archivo único
+const manifestData = {
+  name: "Cronograma 7x7 - Los Pelambres",
+  short_name: "Cronograma 7x7",
+  description: "Calendario de turnos rotativos 7x7 Minera Los Pelambres",
+  start_url: "./",
+  display: "standalone",
+  background_color: "#f7f9fc",
+  theme_color: "#1a3a5c",
+  orientation: "portrait",
+  icons: [
+    { src: "https://via.placeholder.com/192x192/1a3a5c/ffffff?text=7x7", sizes: "192x192", type: "image/png" },
+    { src: "https://via.placeholder.com/512x512/1a3a5c/ffffff?text=7x7", sizes: "512x512", type: "image/png" }
+  ]
+};
+const blob = new Blob([JSON.stringify(manifestData)], {type:'application/json'});
+const murl = URL.createObjectURL(blob);
+const ml = document.createElement('link');
+ml.rel='manifest'; ml.href=murl;
+document.currentScript.parentNode.appendChild(ml);
+
+// Service Worker inline
+if('serviceWorker' in navigator){
+  const swCode = `
+const CACHE='cron7x7-v1';
+const ASSETS=['./','/'];
+self.addEventListener('install',e=>{
+  e.waitUntil(caches.open(CACHE).then(c=>c.addAll(ASSETS)));
+  self.skipWaiting();
+});
+self.addEventListener('activate',e=>{
+  e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))));
+  self.clients.claim();
+});
+self.addEventListener('fetch',e=>{
+  e.respondWith(caches.match(e.request).then(r=>r||fetch(e.request).catch(()=>caches.match('./'))));
+});
+  `;
+  const swBlob = new Blob([swCode],{type:'application/javascript'});
+  const swUrl = URL.createObjectURL(swBlob);
+  navigator.serviceWorker.register(swUrl).catch(()=>{});
+}
+</script>
 <title>Cronograma 7×7 – Los Pelambres</title>
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cronograma 7x7">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
 <style>
 :root{
   --dia:#1a3a5c;--noche:#4a2060;--desc:#f0f4f8;--desc-txt:#444;
@@ -614,6 +675,15 @@ function doReset(){
 render();
 document.getElementById('ov-edit').addEventListener('click',function(e){if(e.target===this)closeEdit()});
 document.getElementById('ov-gcal').addEventListener('click',function(e){if(e.target===this)closeGcal()});
+
+// Registrar Service Worker para PWA
+if('serviceWorker' in navigator){
+  window.addEventListener('load',()=>{
+    navigator.serviceWorker.register('sw.js')
+      .then(()=>console.log('SW registrado'))
+      .catch(e=>console.log('SW error:',e));
+  });
+}
 </script>
 </body>
 </html>
