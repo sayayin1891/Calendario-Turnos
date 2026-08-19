@@ -1,8 +1,8 @@
-const CACHE = 'cronograma-v1';
+const CACHE = 'cronograma-v2';
 const FILES = [
-  '/cronograma-pelambres/',
-  '/cronograma-pelambres/index.html',
-  '/cronograma-pelambres/manifest.json'
+  '/Calendario-Turnos/',
+  '/Calendario-Turnos/index.html',
+  '/Calendario-Turnos/manifest.json'
 ];
 
 self.addEventListener('install', e => {
@@ -24,7 +24,7 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   e.respondWith(
     caches.match(e.request).then(r => r || fetch(e.request).catch(() =>
-      caches.match('/cronograma-pelambres/index.html')
+      caches.match('/Calendario-Turnos/index.html')
     ))
   );
 });

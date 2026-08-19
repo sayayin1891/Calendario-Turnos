@@ -1,10 +1,10 @@
 {
-  "id": "/cronograma-pelambres/",
+  "id": "/Calendario-Turnos/",
   "name": "Cronograma 7x7 Los Pelambres",
   "short_name": "Cronograma 7x7",
   "description": "Calendario de turnos 7x7 rotativo Minera Los Pelambres - Sodexo Chile",
-  "start_url": "/cronograma-pelambres/",
-  "scope": "/cronograma-pelambres/",
+  "start_url": "/Calendario-Turnos/",
+  "scope": "/Calendario-Turnos/",
   "display": "standalone",
   "orientation": "portrait",
   "background_color": "#1a3a5c",
