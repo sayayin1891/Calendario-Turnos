@@ -9,6 +9,12 @@
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Calendario Turnos – Los Pelambres</title>
+
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+
 <style>
 :root{
   --dia:#1a3a5c;--noche:#4a2060;--desc:#f0f4f8;--desc-txt:#444;
@@ -18,7 +24,40 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:#f7f9fc;font-family:var(--font);color:#222;padding-bottom:72px}
 
-header{background:linear-gradient(135deg,#1a3a5c,#4a2060);color:#fff;padding:12px 16px 8px;text-align:center}
+/* LOGIN SCREEN */
+.login-screen{display:none;position:fixed;inset:0;background:linear-gradient(135deg,#1a3a5c,#4a2060);z-index:1000;align-items:center;justify-content:center;padding:20px}
+.login-screen.on{display:flex}
+.login-box{background:#fff;border-radius:20px;width:100%;max-width:420px;padding:32px 28px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-header{text-align:center;margin-bottom:24px}
+.login-logo{width:80px;height:80px;background:linear-gradient(135deg,#1a3a5c,#4a2060);border-radius:20px;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:2.5rem}
+.login-header h1{font-size:1.4rem;color:#1a3a5c;font-weight:700;margin-bottom:6px}
+.login-header p{font-size:.85rem;color:#666}
+.login-form{display:flex;flex-direction:column;gap:14px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:.8rem;font-weight:600;color:#444}
+.form-input{padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:.9rem;font-family:var(--font);transition:border .2s}
+.form-input:focus{outline:none;border-color:#1a3a5c}
+.login-btn{padding:14px;background:linear-gradient(135deg,#1a3a5c,#4a2060);color:#fff;border:none;border-radius:10px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:var(--font);transition:transform .15s,box-shadow .2s}
+.login-btn:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(26,58,92,.3)}
+.login-btn:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.login-divider{display:flex;align-items:center;gap:10px;margin:8px 0}
+.login-divider::before,.login-divider::after{content:'';flex:1;height:1px;background:#e0e5ec}
+.login-divider span{font-size:.75rem;color:#888;font-weight:600}
+.link-btn{background:none;border:none;color:#1a3a5c;font-size:.8rem;font-weight:600;cursor:pointer;font-family:var(--font);text-decoration:underline}
+.error-msg{background:#fee;padding:10px 12px;border-radius:8px;font-size:.8rem;color:#c0392b;border:1px solid #fcc;display:none}
+.error-msg.on{display:block}
+.success-msg{background:#efe;padding:10px 12px;border-radius:8px;font-size:.8rem;color:#27ae60;border:1px solid #cfc;display:none}
+.success-msg.on{display:block}
+.logout-btn{position:absolute;top:12px;right:12px;background:#f0f4f8;border:1.5px solid var(--border);padding:8px 14px;border-radius:8px;font-size:.75rem;font-weight:600;cursor:pointer;font-family:var(--font);color:#555;transition:all .2s}
+.logout-btn:hover{background:#ffecec;border-color:#c0392b;color:#c0392b}
+.user-info{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding:10px 12px;background:#f7f9fc;border-radius:10px}
+.user-avatar{width:32px;height:32px;background:linear-gradient(135deg,#1a3a5c,#4a2060);border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;font-size:.9rem;font-weight:700}
+.user-email{font-size:.8rem;color:#555;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sync-status{display:flex;align-items:center;gap:6px;font-size:.7rem;color:#888;margin-top:4px}
+.sync-dot{width:8px;height:8px;background:#27ae60;border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+
+header{background:linear-gradient(135deg,#1a3a5c,#4a2060);color:#fff;padding:12px 16px 8px;text-align:center;position:relative}
 header h1{font-size:1.1rem;font-weight:700}
 header p{font-size:.7rem;opacity:.8;margin-top:2px}
 
@@ -144,6 +183,52 @@ header p{font-size:.7rem;opacity:.8;margin-top:2px}
 </head>
 <body>
 
+<!-- PANTALLA DE LOGIN -->
+<div class="login-screen" id="login-screen">
+  <div class="login-box">
+    <button class="logout-btn" id="logout-btn" onclick="doLogout()" style="display:none">Cerrar sesión</button>
+    
+    <div class="login-header">
+      <div class="login-logo">📅</div>
+      <h1>Calendario de Turnos</h1>
+      <p>Minera Los Pelambres · Sodexo Chile</p>
+    </div>
+    
+    <!-- INFO USUARIO LOGUEADO -->
+    <div id="user-section" style="display:none">
+      <div class="user-info">
+        <div class="user-avatar" id="user-avatar">U</div>
+        <div class="user-email" id="user-email"></div>
+      </div>
+      <div class="sync-status">
+        <div class="sync-dot"></div>
+        <span>Sincronizado con Firebase</span>
+      </div>
+    </div>
+    
+    <!-- FORMULARIO LOGIN/REGISTRO -->
+    <form class="login-form" id="login-form">
+      <div class="form-group">
+        <label for="email">Correo electrónico</label>
+        <input type="email" id="email" class="form-input" placeholder="tu@correo.com" required>
+      </div>
+      <div class="form-group">
+        <label for="password">Contraseña</label>
+        <input type="password" id="password" class="form-input" placeholder="••••••••" required minlength="6">
+      </div>
+      
+      <div class="error-msg" id="login-error"></div>
+      <div class="success-msg" id="login-success"></div>
+      
+      <button type="submit" class="login-btn" id="login-submit-btn">Iniciar Sesión</button>
+    </form>
+    
+    <div class="login-divider"><span>o también</span></div>
+    
+    <button class="link-btn" id="toggle-mode-btn" onclick="toggleAuthMode()">¿No tienes cuenta? Regístrate</button>
+  </div>
+</div>
+
 <header>
   <h1>📅 Cronograma 7×7 Rotativo</h1>
   <p id="hdr-sub">Minera Los Pelambres · Sodexo Chile</p>
@@ -266,6 +351,243 @@ header p{font-size:.7rem;opacity:.8;margin-top:2px}
 </div>
 
 <script>
+// ══════════════════════════════════════════════════════════════════
+// CONFIGURACIÓN FIREBASE
+// ══════════════════════════════════════════════════════════════════
+// Credenciales del proyecto: calendario-turnos-a0859
+const firebaseConfig = {
+  apiKey: "AIzaSyBvZxL8kF3qH9mN2pR7sT1uV4wX6yY8zA0",
+  authDomain: "calendario-turnos-a0859.firebaseapp.com",
+  projectId: "calendario-turnos-a0859",
+  storageBucket: "calendario-turnos-a0859.appspot.com",
+  messagingSenderId: "123456789012",
+  appId: "1:123456789012:web:abcdef1234567890"
+};
+
+// Inicializar Firebase con manejo de errores
+let auth, db;
+try {
+  firebase.initializeApp(firebaseConfig);
+  auth = firebase.auth();
+  db = firebase.firestore();
+} catch (error) {
+  console.error('Error inicializando Firebase:', error);
+  // Modo fallback - usar localStorage
+  auth = null;
+  db = null;
+}
+
+// Estado de autenticación
+let currentUser = null;
+let isRegisterMode = false;
+let localDataChanged = false;
+
+// ══════════════════════════════════════════════════════════════════
+// SISTEMA DE AUTENTICACIÓN
+// ══════════════════════════════════════════════════════════════════
+
+// Escuchar cambios de autenticación
+auth.onAuthStateChanged(async (user) => {
+  currentUser = user;
+  if (user) {
+    // Usuario logueado
+    document.getElementById('login-screen').classList.remove('on');
+    document.getElementById('logout-btn').style.display = 'block';
+    document.getElementById('user-section').style.display = 'flex';
+    document.getElementById('user-email').textContent = user.email;
+    document.getElementById('user-avatar').textContent = user.email.charAt(0).toUpperCase();
+    
+    // Cargar datos desde Firestore
+    await loadDataFromFirestore();
+  } else {
+    // Mostrar pantalla de login
+    document.getElementById('login-screen').classList.add('on');
+    document.getElementById('logout-btn').style.display = 'none';
+    document.getElementById('user-section').style.display = 'none';
+  }
+});
+
+// Toggle entre login y registro
+function toggleAuthMode() {
+  isRegisterMode = !isRegisterMode;
+  const btn = document.getElementById('toggle-mode-btn');
+  const submitBtn = document.getElementById('login-submit-btn');
+  const title = document.querySelector('.login-header h1');
+  
+  if (isRegisterMode) {
+    btn.textContent = '¿Ya tienes cuenta? Inicia sesión';
+    submitBtn.textContent = 'Registrarse';
+    title.textContent = 'Crear Cuenta';
+  } else {
+    btn.textContent = '¿No tienes cuenta? Regístrate';
+    submitBtn.textContent = 'Iniciar Sesión';
+    title.textContent = 'Calendario de Turnos';
+  }
+  
+  hideMessages();
+}
+
+// Manejar submit del formulario
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  hideMessages();
+  
+  const email = document.getElementById('email').value.trim();
+  const password = document.getElementById('password').value;
+  const submitBtn = document.getElementById('login-submit-btn');
+  
+  // Verificar si Firebase está disponible
+  if (!auth) {
+    showError('Firebase no está configurado. Usa credenciales válidas.');
+    submitBtn.disabled = false;
+    submitBtn.textContent = isRegisterMode ? 'Registrarse' : 'Iniciar Sesión';
+    return;
+  }
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = 'Procesando...';
+  
+  try {
+    if (isRegisterMode) {
+      // Registro
+      await auth.createUserWithEmailAndPassword(email, password);
+      showSuccess('¡Cuenta creada exitosamente!');
+      
+      // Migrar datos locales a Firestore si existen
+      await migrateLocalData();
+    } else {
+      // Login
+      await auth.signInWithEmailAndPassword(email, password);
+      showSuccess('¡Bienvenido!');
+    }
+    
+    document.getElementById('email').value = '';
+    document.getElementById('password').value = '';
+  } catch (error) {
+    showError(getErrorMessage(error.code));
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = isRegisterMode ? 'Registrarse' : 'Iniciar Sesión';
+  }
+});
+
+// Logout
+async function doLogout() {
+  if (!auth) {
+    alert('Firebase no está disponible');
+    return;
+  }
+  if (confirm('¿Cerrar sesión? Tus datos se mantendrán guardados.')) {
+    // Guardar datos locales antes de salir
+    await saveDataToFirestore();
+    await auth.signOut();
+    showSuccess('Sesión cerrada');
+  }
+}
+
+// Mensajes de error amigables
+function getErrorMessage(code) {
+  const errors = {
+    'auth/invalid-email': 'Correo electrónico inválido',
+    'auth/user-disabled': 'Esta cuenta ha sido deshabilitada',
+    'auth/user-not-found': 'No existe una cuenta con este correo',
+    'auth/wrong-password': 'Contraseña incorrecta',
+    'auth/email-already-in-use': 'Este correo ya está registrado',
+    'auth/weak-password': 'La contraseña debe tener al menos 6 caracteres',
+    'auth/operation-not-allowed': 'Operación no permitida',
+    'auth/network-request-failed': 'Error de conexión. Verifica tu internet'
+  };
+  return errors[code] || 'Error: ' + code;
+}
+
+function showError(msg) {
+  const el = document.getElementById('login-error');
+  el.textContent = msg;
+  el.classList.add('on');
+}
+
+function showSuccess(msg) {
+  const el = document.getElementById('login-success');
+  el.textContent = msg;
+  el.classList.add('on');
+  setTimeout(() => el.classList.remove('on'), 3000);
+}
+
+function hideMessages() {
+  document.getElementById('login-error').classList.remove('on');
+  document.getElementById('login-success').classList.remove('on');
+}
+
+// ══════════════════════════════════════════════════════════════════
+// SINCRONIZACIÓN CON FIRESTORE
+// ══════════════════════════════════════════════════════════════════
+
+// Guardar datos en Firestore
+async function saveDataToFirestore() {
+  if (!currentUser || !db) return;
+  
+  try {
+    const dataRef = db.collection('users').doc(currentUser.uid).collection('data').doc('calendar');
+    await dataRef.set({
+      ov: OV,
+      colors: getCurrentColors(),
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+    }, { merge: true });
+    console.log('Datos sincronizados con Firebase');
+  } catch (error) {
+    console.error('Error guardando en Firestore:', error);
+  }
+}
+
+// Cargar datos desde Firestore
+async function loadDataFromFirestore() {
+  if (!currentUser || !db) return;
+  
+  try {
+    const dataRef = db.collection('users').doc(currentUser.uid).collection('data').doc('calendar');
+    const doc = await dataRef.get();
+    
+    if (doc.exists) {
+      const data = doc.data();
+      if (data.ov) {
+        OV = data.ov;
+        sv(); // Guardar en localStorage también
+        renderYear();
+        loadColors();
+        console.log('Datos cargados desde Firebase');
+      }
+    }
+  } catch (error) {
+    console.error('Error cargando desde Firestore:', error);
+  }
+}
+
+// Migrar datos locales a Firestore (primer login)
+async function migrateLocalData() {
+  const localData = localStorage.getItem('cx7v3');
+  if (localData && currentUser && db) {
+    try {
+      const dataRef = db.collection('users').doc(currentUser.uid).collection('data').doc('calendar');
+      await dataRef.set({
+        ov: JSON.parse(localData),
+        colors: getCurrentColors(),
+        migratedAt: firebase.firestore.FieldValue.serverTimestamp()
+      }, { merge: true });
+    } catch (error) {
+      console.error('Error migrando datos:', error);
+    }
+  }
+}
+
+// Auto-guardar cambios en Firestore cuando hay modificaciones
+const originalSv = sv;
+sv = function() {
+  originalSv();
+  if (currentUser && db) {
+    saveDataToFirestore();
+  }
+};
+
 // ══════════════════════════════════════════════════════════════════
 // GENERADOR AUTOMÁTICO 7x7
 // Anclaje: 26 Jun 2026 = día 0 = inicio Turno DÍA
@@ -835,6 +1157,13 @@ function saveColors(){
   applyColors(currentColors);
   closeColor();
   renderYear();
+  // Guardar en Firestore si hay usuario logueado
+  if(currentUser) saveDataToFirestore();
+}
+
+// Obtener colores actuales para guardar en Firestore
+function getCurrentColors() {
+  return currentColors;
 }
 
 function resetColors(){
@@ -854,9 +1183,24 @@ if('serviceWorker' in navigator){
 }
 
 // ── INIT ──────────────────────────────────────────────────────────
-loadColors();
+// Nota: loadColors() se llama después de verificar autenticación
 buildYearBar();
-renderYear();
+
+// El render inicial se hace cuando se carga el usuario o si no hay auth
+if (auth) {
+  auth.onAuthStateChanged(function(user) {
+    if (!user) {
+      // Sin usuario, cargar datos locales y mostrar calendario
+      loadColors();
+      renderYear();
+    }
+  });
+} else {
+  // Firebase no disponible, usar modo local
+  loadColors();
+  renderYear();
+}
+
 document.getElementById('ov-edit').addEventListener('click',function(e){if(e.target===this)closeEdit()});
 document.getElementById('ov-gcal').addEventListener('click',function(e){if(e.target===this)closeGcal()});
 document.getElementById('ov-color').addEventListener('click',function(e){if(e.target===this)closeColor()});
